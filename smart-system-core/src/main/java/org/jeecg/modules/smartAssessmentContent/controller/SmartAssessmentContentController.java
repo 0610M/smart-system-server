@@ -20,12 +20,15 @@ import org.jeecg.common.system.vo.LoginUser;
 import org.jeecg.common.system.vo.SysDepartModel;
 import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.modules.common.service.CommonService;
+import org.jeecg.modules.smartAnswerInfo.entity.SmartAnswerInfo;
+import org.jeecg.modules.smartAnswerInfo.service.ISmartAnswerInfoService;
 import org.jeecg.modules.smartAssessmentContent.entity.SmartAssessmentContent;
 import org.jeecg.modules.smartAssessmentContent.service.ISmartAssessmentContentService;
 import org.jeecg.modules.smartAssessmentDepartment.entity.SmartAssessmentDepartment;
 import org.jeecg.modules.smartAssessmentDepartment.service.ISmartAssessmentDepartmentService;
 import org.jeecg.modules.smartAssessmentMission.entity.SmartAssessmentMission;
 import org.jeecg.modules.smartAssessmentMission.service.ISmartAssessmentMissionService;
+import org.jeecg.modules.smartAssessmentTeam.entity.SmartAssessmentTeam;
 import org.jeecg.modules.smartAssessmentTeam.service.ISmartAssessmentTeamService;
 import org.jeecg.modules.smartFinanceResult.entity.SmartFinanceResult;
 import org.jeecg.modules.smartRankVisible.entity.SmartRankVisible;
@@ -78,6 +81,9 @@ public class SmartAssessmentContentController extends JeecgController<SmartAsses
     private ISmartAssessmentTeamService smartAssessmentTeamService;
 
     @Autowired
+    private ISmartAnswerInfoService smartAnswerInfoService;
+
+    @Autowired
     ISysBaseAPI iSysBaseAPI;
 
     @Value("${jeecg.path.upload}")
@@ -89,8 +95,8 @@ public class SmartAssessmentContentController extends JeecgController<SmartAsses
      * @param id
      * @return
      */
-    @AutoLog(value = "答题信息表-分页列表查询")
-    @ApiOperation(value = "答题信息表-分页列表查询", notes = "答题信息表-分页列表查询")
+    @AutoLog(value = "考核节点表-根据ID分页列表查询")
+    @ApiOperation(value = "考核节点表-根据ID分页列表查询", notes = "答题信息表-根据ID分页列表查询")
     @GetMapping(value = "/list")
     public Result<?> queryPageList(@RequestParam("id") String id) {
         try {
@@ -103,6 +109,57 @@ public class SmartAssessmentContentController extends JeecgController<SmartAsses
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             return Result.error("查询节点失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 分页列表查询
+     *
+     * @return
+     */
+    @AutoLog(value = "考核节点表-查询负责的考核要点")
+    @ApiOperation(value = "考核节点表-查询负责的考核要点", notes = "考核节点表-查询负责的考核要点")
+    @GetMapping(value = "/listInCharge")
+    public Result<?> listInCharge(@RequestParam("missionId") String missionId,
+                                  @RequestParam(name = "roleType", defaultValue = "depart") String roleType,
+                                  @RequestParam(name = "roleId") String roleId) {
+        try {
+            QueryWrapper<SmartAssessmentContent> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("mission_id", missionId);
+            queryWrapper.eq("is_key", 1);
+            Integer responsibleAmount = 0;
+            String departIds = "";
+
+            if ("depart".equals(roleType)) {
+                queryWrapper.like("ass_depart", roleId);
+                SmartAssessmentDepartment assessmentDepartment = smartAssessmentDepartmentService.getById(roleId);
+                if (assessmentDepartment != null) {
+                    responsibleAmount = assessmentDepartment.getResponsibleAmount();
+                    departIds = assessmentDepartment.getResponsibleDepart();
+                }
+            } else {
+                queryWrapper.like("ass_team", roleId);
+                SmartAssessmentTeam assessmentTeam = smartAssessmentTeamService.getById(roleId);
+                if (assessmentTeam != null) {
+                    responsibleAmount = assessmentTeam.getDepartAmount();
+                    departIds = assessmentTeam.getDeparts();
+                }
+            }
+            List<SmartAssessmentContent> list = smartAssessmentContentService.list(queryWrapper);
+            // 查询每个考核要点的数目
+            for (SmartAssessmentContent content : list) {
+                QueryWrapper<SmartAnswerInfo> answerInfoQueryWrapper = new QueryWrapper<>();
+                answerInfoQueryWrapper.eq("mission_id", missionId);
+                answerInfoQueryWrapper.in("depart", Arrays.asList(departIds.split(",")));
+                answerInfoQueryWrapper.notLike("marked_content", content.getId() + '_' + roleId);
+                long count = smartAnswerInfoService.count(answerInfoQueryWrapper);
+                content.setSortNo((double) count);
+            }
+
+            return Result.OK(list);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            return Result.error("查询节点失败");
         }
     }
 
