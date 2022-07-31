@@ -15,4 +15,18 @@
 		WHERE
 			 main_id = #{mainId} 
 	</select>
+	<select id="listAllByAssContentIdAndMainIdAndRoleId"
+			resultType="org.jeecg.modules.smartAnswerAssContent.entity.SmartAnswerAssScore">
+		SELECT
+		saac.id, saac.main_id, score
+		FROM
+		smart_answer_ass_content saac
+		LEFT JOIN smart_answer_ass_score saas ON saas.main_id = saac.id
+		WHERE saac.main_id in
+		<foreach collection="mainIds" item="mainId" open="(" separator="," close=")">
+			#{mainId}
+		</foreach>
+		and ass_content_id = #{assContentId}
+		and role_id = #{roleId}
+	</select>
 </mapper>

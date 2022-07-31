@@ -12,8 +12,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * @Description: 答题考核节点表
@@ -53,5 +55,18 @@ public class SmartAnswerAssContentServiceImpl extends ServiceImpl<SmartAnswerAss
     public List<SmartAnswerAssContent> listAllByAssContentIdAndMissionId(String missionId, String assContentId) {
 		return smartAnswerAssContentMapper.listAllByAssContentIdAndMissionId(missionId, assContentId);
     }
+
+    @Override
+    public Map<String, Double> listAllByAssContentIdAndMainIdAndRoleId(List<String> mainIds, String assContentId, String roleId) {
+		Map<String, Double> map = new HashMap<String, Double>();
+		if (mainIds.size() == 0) {
+			return map;
+		}
+		List<SmartAnswerAssScore> scoreList = smartAnswerAssScoreMapper.listAllByAssContentIdAndMainIdAndRoleId(mainIds, assContentId, roleId);
+		for(SmartAnswerAssScore score : scoreList) {
+			map.put(score.getMainId(), score.getScore());
+		}
+		return map;
+	}
 
 }

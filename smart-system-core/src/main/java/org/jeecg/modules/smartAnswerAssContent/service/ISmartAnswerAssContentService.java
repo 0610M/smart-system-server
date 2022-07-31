@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @Description: 答题考核节点表
@@ -37,5 +38,5 @@ public interface ISmartAnswerAssContentService extends IService<SmartAnswerAssCo
 	 */
 	List<SmartAnswerAssContent> listAllByAssContentIdAndMissionId(String missionId, String assContentId);
 
-
+	Map<String, Double> listAllByAssContentIdAndMainIdAndRoleId(List<String> mainIds, String assContentId, String roleId);
 }

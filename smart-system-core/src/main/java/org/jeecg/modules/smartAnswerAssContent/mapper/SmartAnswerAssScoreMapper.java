@@ -17,4 +17,5 @@ public interface SmartAnswerAssScoreMapper extends BaseMapper<SmartAnswerAssScor
     
 	public List<SmartAnswerAssScore> selectByMainId(@Param("mainId") String mainId);
 
+	List<SmartAnswerAssScore> listAllByAssContentIdAndMainIdAndRoleId(@Param("mainIds") List<String> mainIds, @Param("assContentId") String assContentId, @Param("roleId") String roleId);
 }

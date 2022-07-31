@@ -26,6 +26,7 @@ import org.jeecg.modules.smartAssessmentContent.entity.SmartAssessmentContent;
 import org.jeecg.modules.smartAssessmentContent.service.ISmartAssessmentContentService;
 import org.jeecg.modules.smartAssessmentDepartment.entity.SmartAssessmentDepartment;
 import org.jeecg.modules.smartAssessmentDepartment.service.ISmartAssessmentDepartmentService;
+import org.jeecg.modules.smartAssessmentMission.entity.SmartAssessmentDepart;
 import org.jeecg.modules.smartAssessmentMission.entity.SmartAssessmentMission;
 import org.jeecg.modules.smartAssessmentMission.service.ISmartAssessmentMissionService;
 import org.jeecg.modules.smartAssessmentTeam.entity.SmartAssessmentTeam;
@@ -254,8 +255,8 @@ public class SmartAssessmentContentController extends JeecgController<SmartAsses
      * @param req
      * @return
      */
-    @AutoLog(value = "负责评分的考核单位-查询字典值")
-    @ApiOperation(value="负责评分的考核单位-查询字典值", notes="负责评分的考核单位-查询字典值")
+    @AutoLog(value = "考核节点表-查询字典值")
+    @ApiOperation(value="考核节点表-查询字典值", notes="考核节点表-查询字典值")
     @GetMapping(value = "/dict")
     public Result<?> queryDicList(@RequestParam("level") String level,
                                   @RequestParam("missionId") String missionId,
@@ -272,6 +273,59 @@ public class SmartAssessmentContentController extends JeecgController<SmartAsses
             return Result.error("查询字典值失败：查询级别错误");
         }
         List<SmartAssessmentContent> list = smartAssessmentContentService.list(queryWrapper);
+        return Result.OK(list);
+    }
+
+    /**
+     * 查询某考核内容负责评分的考核单位
+     *
+     * @param req
+     * @return
+     */
+    @AutoLog(value = "考核节点表-查询某考核内容负责评分的考核单位")
+    @ApiOperation(value="考核节点表-查询某考核内容负责评分的考核单位", notes="考核节点表-查询某考核内容负责评分的考核单位")
+    @GetMapping(value = "/departmentDictByContentId")
+    public Result<?> queryDepartmentDicListByContentId(@RequestParam(name="contentId", required = true) String contentId,
+                                             HttpServletRequest req) {
+        SmartAssessmentContent assessmentContent = smartAssessmentContentService.getById(contentId);
+        if (assessmentContent == null) {
+            return Result.error("查询某考核内容负责评分的考核单位失败：考核内容不存在");
+        }
+        String assDepart = assessmentContent.getAssDepart();
+        if (StringUtils.isEmpty(assDepart)) {
+            return Result.error("查询某考核内容负责评分的考核单位失败：考核内容负责评分的考核单位为空");
+        }
+        QueryWrapper<SmartAssessmentDepartment> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("id", Arrays.asList(assDepart.split(",")));
+        List<SmartAssessmentDepartment> list = smartAssessmentDepartmentService.list(queryWrapper);
+        Page<SmartAssessmentDepartment> pageList = new Page<>(1, list.size(), list.size());
+        pageList.setRecords(list);
+
+        return Result.OK(pageList);
+    }
+
+    /**
+     * 查询某考核内容负责评分的考核组
+     *
+     * @param req
+     * @return
+     */
+    @AutoLog(value = "考核节点表-查询某考核内容负责评分的考核组")
+    @ApiOperation(value="考核节点表-查询某考核内容负责评分的考核组", notes="考核节点表-查询某考核内容负责评分的考核组")
+    @GetMapping(value = "/teamDictByContentId")
+    public Result<?> queryTeamDicListByContentId(@RequestParam(name="contentId", required = true) String contentId,
+                                                       HttpServletRequest req) {
+        SmartAssessmentContent assessmentContent = smartAssessmentContentService.getById(contentId);
+        if (assessmentContent == null) {
+            return Result.error("查询某考核内容负责评分的考核组失败：考核内容不存在");
+        }
+        String assTeam = assessmentContent.getAssTeam();
+        if (StringUtils.isEmpty(assTeam)) {
+            return Result.error("查询某考核内容负责评分的考核组失败：考核内容负责评分的考核组为空");
+        }
+        QueryWrapper<SmartAssessmentTeam> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("id", Arrays.asList(assTeam.split(",")));
+        List<SmartAssessmentTeam> list = smartAssessmentTeamService.list(queryWrapper);
         return Result.OK(list);
     }
 

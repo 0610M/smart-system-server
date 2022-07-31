@@ -34,6 +34,7 @@ import org.jeecg.modules.smartAssessmentMission.service.ISmartAssessmentDepartSe
 import org.jeecg.modules.smartAssessmentMission.service.ISmartAssessmentMissionService;
 import org.jeecg.modules.smartAssessmentTeam.entity.SmartAssessmentTeam;
 import org.jeecg.modules.smartAssessmentTeam.service.ISmartAssessmentTeamService;
+import org.jeecg.modules.smartOrgMeeting.entity.SmartOrgMeeting;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +45,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @Description: 答题信息表
@@ -238,6 +241,93 @@ public class SmartAnswerInfoController extends JeecgController<SmartAnswerInfo, 
         Page<SmartDepartContentScore> page = new Page<>(pageNo, pageSize);
         IPage<SmartDepartContentScore> departContentScores = smartAnswerInfoService.selectByMissionIdAndContentId(page, missionId, assContentId);
         return Result.OK(departContentScores);
+    }
+
+    /**
+     * 最终评分按照考核组和考核单位查看评分
+     *
+     * @param type
+     * @param roleId
+     * @param contentId 考核要点id
+     * @param pageNo 页码
+     * @param pageSize 每页条数
+     * @param req
+     * @return
+     */
+    @AutoLog(value = "答题信息表-分页列表查询")
+    @ApiOperation(value = "答题信息表-分页列表查询", notes = "答题信息表-分页列表查询")
+    @GetMapping(value = "/listInCharge2")
+    public Result<?> queryChargeScorePageList(SmartAnswerInfo smartAnswerInfo,
+                                              @RequestParam(name = "type", defaultValue = "depart") String type,
+                                              @RequestParam(name = "roleId") String roleId,
+                                              @RequestParam(name = "contentId") String contentId,
+                                              @RequestParam(name = "pageNo", defaultValue = "1") Integer pageNo,
+                                              @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
+                                              HttpServletRequest req) {
+        LoginUser sysUser = (LoginUser) SecurityUtils.getSubject().getPrincipal();
+
+        if (oConvertUtils.isEmpty(roleId)) {
+            return Result.error("没有权限！");
+        }
+
+        if ("depart".equals(type)) {
+            SmartAssessmentDepartment one = smartAssessmentDepartmentService.getById(roleId);
+            if (oConvertUtils.isEmpty(one)) {
+                return Result.error("权限不正确！");
+            }
+            // 只查看所负责的单位
+            smartAnswerInfo.setDepart(one.getResponsibleDepart());
+        } else {
+            SmartAssessmentTeam one = smartAssessmentTeamService.getById(roleId);
+            if (oConvertUtils.isEmpty(one)) {
+                return Result.error("权限不正确！");
+            }
+            // 只查看所负责的单位
+            smartAnswerInfo.setDepart(one.getDeparts());
+        }
+
+        String content = smartAnswerInfo.getMarkedContent();
+        smartAnswerInfo.setMarkedContent(null);
+
+
+        QueryWrapper<SmartAnswerInfo> queryWrapper = QueryGenerator.initQueryWrapper(smartAnswerInfo, req.getParameterMap());
+
+        queryWrapper.select(SmartAnswerInfo.class, i -> !i.getColumn().equals("total_points")
+                && !i.getColumn().equals("ranking")
+                && !i.getColumn().equals("is_show_score"));
+
+        if (oConvertUtils.isNotEmpty(content)) {
+            if ("0".equals(content)) {
+                queryWrapper.notLike("marked_content", contentId + "_" + roleId);
+            } else {
+                queryWrapper.like("marked_content", contentId + "_" + roleId);
+            }
+        }
+
+        Page<SmartAnswerInfo> page = new Page<SmartAnswerInfo>(pageNo, pageSize);
+        IPage<SmartAnswerInfo> pageList = smartAnswerInfoService.page(page, queryWrapper);
+        if (pageList.getTotal() == 0) {
+            return Result.error("无数据！");
+        }
+
+        List<String> answerInfoIdList = pageList.getRecords().stream().map(SmartAnswerInfo::getId).collect(Collectors.toList());
+
+        // 2. 获取成绩
+        Map<String, Double> map = smartAnswerAssContentService.listAllByAssContentIdAndMainIdAndRoleId(answerInfoIdList, contentId, roleId);
+
+        pageList.getRecords().forEach(item -> {
+            String markedContent = item.getMarkedContent();
+            int index = StringUtils.indexOf(markedContent, contentId + "_" + roleId);
+            if (index == -1) {
+                item.setMarkedContent("未评分");
+            } else {
+                item.setMarkedContent("已评分");
+            }
+
+            item.setTotalPoints(map.get(item.getId()));
+        });
+
+        return Result.OK(pageList);
     }
 
     /**

@@ -73,7 +73,6 @@ public class SmartAnswerInfo implements Serializable {
     @ApiModelProperty(value = "截止时间")
     private java.util.Date endTime;
     /**已评分内容ID*/
-    @TableField(updateStrategy = FieldStrategy.IGNORED)
     @ApiModelProperty(value = "已评分内容ID")
     private java.lang.String markedContent;
 	/**完成要点个数*/
